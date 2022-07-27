@@ -1,7 +1,8 @@
-import sys
 import requests
+import sys
+import itertools
+import threading
 import time
-from time import sleep
 from termcolor import colored
 
 def api_req():
@@ -13,9 +14,24 @@ def api_req():
   except requests.ConnectionError:
     sys.exit()
 
+
 def main():
+  done = False
+  def animate():
+    for c in itertools.cycle(['|', '/', '-', '\\']):
+      if done:
+          break
+      sys.stdout.write('\rloading request ' + c)
+      sys.stdout.flush()
+      time.sleep(0.1)
+
+  t = threading.Thread(target=animate)
+  t.start()
+  time.sleep(3)
+  done = True
+
   prompt = api_req()
-  print('<<', colored(prompt, 'yellow'), '\n')
+  print('\n\n<<', colored(prompt, 'yellow'), '\n')
 
   while True: 
     timerStart = time.perf_counter()
@@ -38,22 +54,13 @@ def main():
       err_list.append(write_l[i])
 
   wps = len(write) / 60
-  #prec = (len(prompt_l) / count) * 100
-
+  err_rate = ((len(prompt_l) - (len(prompt_l) - count)) / len(prompt)) * 100
+  acc = 100 - err_rate
   print()
   if count == 0:
     print(f'you did {colored(f"{count} mistakes", "green")} done')
   else:  
-    print(colored(f"{count} mistakes", "red"), 'done')
-    while True:
-      err_print = input('print mistakes? (y/[n]) -> ')
-      if err_print == 'y' or err_print == 'Y':
-        for i in range(len(err_list)):
-          print(colored(err_list[i], 'red'))
-        print()
-        break
-      else:
-        break        
+    print(colored(f"{count} mistakes", "red"), 'done')        
 
   if (timerStop - timerStart) < 60:
     timer = timerStop - timerStart
@@ -63,8 +70,18 @@ def main():
     print('it took you ', colored(f'{round(timer, 2)} minutes', 'yellow'))
 
   print(f'typing speed of {colored(f"{round(wps, 3)} wps", "magenta")} (words per seconds)')
-  #print('while precision of', colored(f'{round(prec, 2)}%', 'yellow'))
+  print(f'with {colored("accuracy", "yellow")} of', colored(f'{round(acc, 2)}%', 'yellow'))
 
+  if count != 0:
+    while True:
+      err_print = input('\nprint mistakes? (y/[n]) -> ')
+      if err_print == 'y' or err_print == 'Y':
+        for i in range(len(err_list)):
+          print(colored(err_list[i], 'red'))
+        print()
+        break
+      else:
+        break
 
 try:
   main()
